@@ -335,7 +335,7 @@ return [
         'expect' => ['kind' => 'query', 'query_metric' => 'biggest_expenses', 'limit' => 1, 'period_kind' => 'last_month']],
     ['id' => 'query-search', 'text' => 'find the uber transactions',
         'model' => $out($item(['intent' => 'query', 'event_type' => null, 'query_metric' => 'list', 'search_text' => 'uber', 'period' => $period('this_month')])),
-        'expect' => ['kind' => 'query', 'query_metric' => 'list', 'search_text' => 'uber']],
+        'expect' => ['kind' => 'query', 'query_metric' => 'list', 'search_or_merchant' => 'uber']],
     ['id' => 'query-never-records-the-amount', 'text' => 'did I spend 500 on petrol?',
         'model' => $out($item(['intent' => 'query', 'event_type' => null, 'query_metric' => 'list', 'category' => 'petrol', 'search_text' => '500', 'period' => $period('this_month')])),
         'expect' => ['kind' => 'query', 'query_metric' => 'list']],

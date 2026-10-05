@@ -3,6 +3,7 @@
 use App\Enums\TransactionSource;
 use App\Enums\TransactionType;
 use App\Models\LedgerTransaction;
+use App\Models\Merchant;
 use App\Services\AI\FakeAIProvider;
 use App\Services\Reporting\ExportService;
 use App\Services\Reporting\PeriodResolver;
@@ -37,6 +38,30 @@ beforeEach(function () {
 });
 
 describe('answering questions from the ledger', function () {
+    it('finds "the uber transactions" however the model files the name: merchant, search_text or both', function (array $filing, array $found, array $missing) {
+        $uber = Merchant::where('user_id', $this->user->id)->where('name', 'Uber')->firstOrFail();
+        // linked to the Uber merchant, but the description does not say "uber"
+        ($this->post)('300', 'Fuel', '2026-10-03', TransactionType::Expense, ['merchantId' => $uber->id, 'description' => 'office ride']);
+        // no merchant record, the word is only in the description
+        ($this->post)('120', 'Fuel', '2026-10-04', TransactionType::Expense, ['description' => 'Uber to airport']);
+        ($this->post)('450', 'Fuel', '2026-10-04', TransactionType::Expense, ['description' => 'Swiggy dinner']);
+        FakeAIProvider::respond(aiEnvelope(qItem(['query_metric' => 'list', 'period' => qPeriod('month', ['month' => 10, 'year' => 2026])] + $filing)));
+
+        ($this->ask)('find the uber transactions');
+
+        foreach ($found as $text) {
+            expect(sentTexts()[0])->toContain($text);
+        }
+        foreach ($missing as $text) {
+            expect(sentTexts()[0])->not->toContain($text);
+        }
+    })->with([
+        'merchant only' => [['merchant' => 'Uber', 'search_text' => null], ['office ride'], ['Swiggy']],
+        'search_text only (it also matches the merchant name)' => [['merchant' => null, 'search_text' => 'uber'], ['Uber to airport', 'office ride'], ['Swiggy']],
+        'both' => [['merchant' => 'Uber', 'search_text' => 'uber'], ['office ride'], ['Swiggy']],
+        'an unknown shop falls back to the description' => [['merchant' => 'Swiggy2', 'search_text' => null], ['No transactions'], ['office ride']],
+    ]);
+
     it('answers "how much did I spend" with the exact sum and never records anything', function () {
         ($this->post)('250', 'Vegetables', '2026-10-02');
         ($this->post)('1000.50', 'Fuel', '2026-10-03');

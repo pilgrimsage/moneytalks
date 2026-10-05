@@ -178,6 +178,15 @@ class EvalRunner
             }
         }
 
+        // "find the uber transactions": a name may be filed as search_text or as merchant; the planner treats both the same
+        // (a merchant that is not one of the user's falls back to a description search), so either is a correct answer.
+        if (array_key_exists('search_or_merchant', $want)) {
+            $filed = array_filter([$got->item['search_text'] ?? null, $got->item['merchant'] ?? null], fn ($v) => is_string($v) && $v !== '');
+            if (! collect($filed)->contains(fn ($v) => $this->sameValue($v, $want['search_or_merchant']))) {
+                $problems[] = "item {$i}: expected ".json_encode($want['search_or_merchant']).' as search_text or merchant, got '.json_encode(array_values($filed));
+            }
+        }
+
         foreach (['period' => 'period_kind', 'compare_period' => 'compare_kind'] as $key => $wantKey) {
             if (array_key_exists($wantKey, $want) && ($got->item[$key]['kind'] ?? null) !== $want[$wantKey]) {
                 $problems[] = "item {$i}: {$key} expected ".json_encode($want[$wantKey]).', got '.json_encode($got->item[$key]['kind'] ?? null);
