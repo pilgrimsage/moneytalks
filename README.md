@@ -103,6 +103,8 @@ Then message your bot: `help`, `spent 250 on vegetables`, `balance`, `undo`, `ho
 (On WhatsApp it can only reply within 24 hours of your last message, so message it first. Telegram has no such limit.) Nothing arrives? `php artisan moneytalks:health`, `storage/logs/laravel.log`, [runbooks](docs/runbooks.md).
 Also set `AI_DAILY_BUDGET_GLOBAL_USD` (e.g. `1`) and point a free uptime monitor at `GET /health` with `Authorization: Bearer <HEALTH_TOKEN>`.
 
+**Accounts:** just tell the bot: `add Axis bank with 12000` or `my opening balance on HDFC is 52340` (it asks for a tap first). The console command `moneytalks:account:create` does the same.
+
 **Optional:** voice notes (`STT_PROVIDER=openai_compatible`, `STT_API_KEY`); opening balances
 (`php artisan moneytalks:account:create <number> "HDFC Bank" bank --opening=52340.50 --alias=hdfc`); more in `docs/ai.md`.
 

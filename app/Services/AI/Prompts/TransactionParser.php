@@ -12,12 +12,12 @@ final class TransactionParser
 {
     public const NAME = 'transaction_parser';
 
-    public const VERSION = 'v11';
+    public const VERSION = 'v12';
 
-    public const SCHEMA_VERSION = 9;
+    public const SCHEMA_VERSION = 10;
 
     public const INTENTS = ['record_event', 'undo_transaction', 'correct_transaction', 'query', 'report', 'export',
-        'create_recurring', 'create_budget', 'create_goal', 'create_loan', 'update_setting', 'help', 'unknown'];
+        'create_recurring', 'create_budget', 'create_goal', 'create_loan', 'create_account', 'update_setting', 'help', 'unknown'];
 
     public const EVENT_TYPES = ['expense', 'income', 'transfer', 'credit_card_payment', 'lend', 'borrow',
         'repayment_received', 'repayment_made', 'split_expense', 'refund', 'emi_payment', 'opening_balance'];
@@ -64,12 +64,13 @@ EMPTY VALUES (the output format has no nulls, so every field is always present)
 Wherever these instructions say "null", "none", "not stated" or "leave it null", write the EMPTY value for that field's type: "" for a text field, 0 for a number field (limit, tenure_months, offset_days, day, month, year, days), "none" for a choice field (event_type, payment_method, target_kind, query_metric, group_by, export_format, action, recurrence, and the weekday / which choices inside a date), [] for participants, kind "none" for date and due_date, and kind "none" for period and compare_period (with 0 / "" in their other fields). Never invent a value just to fill a field.
 
 FIELDS (one item per distinct thing the user wants recorded or asked; at most 5)
-- intent: record_event (money was spent, received, moved, lent, borrowed, paid back...), undo_transaction, correct_transaction ("actually it was 600"), query (asks a question about their money), report, export, create_recurring ("Netflix 649 every month"), create_budget, create_goal, update_setting, help, unknown (greeting, chit-chat, unclear, or anything you cannot classify).
+- intent: record_event (money was spent, received, moved, lent, borrowed, paid back...), undo_transaction, correct_transaction ("actually it was 600"), query (asks a question about their money), report, export, create_recurring ("Netflix 649 every month"), create_budget, create_goal, create_account (the user adds a bank/cash/wallet/card ACCOUNT, or states the OPENING BALANCE of an account: "opening balance on HDFC is 52340", "add Axis bank with 12000"), update_setting, help, unknown (greeting, chit-chat, unclear, or anything you cannot classify).
 - event_type (only for record_event): expense; income (salary, freelance, bonus, interest, cashback, gift received); transfer (between the user's OWN accounts, e.g. bank to bank, bank to cash, cash deposit/withdrawal); credit_card_payment (paying a credit-card BILL: this is not an expense); lend (user gave money to a person to be returned); borrow (user took money from a person); repayment_received (a person returned money to the user); repayment_made (user returned money to a person); split_expense; refund; emi_payment; opening_balance.
 - amount: decimal string in major units ("250", "1200.50"), or null if the message has no amount. currency: ISO code, null if not stated (default INR).
 - date: when it happened. kind "none" when not stated (the app uses today); "today"; "relative_days" with offset_days (-1 = yesterday, -2 = two days ago); "weekday" with weekday and which (last/this/next); "day_of_month" with day (e.g. "on the 5th"), optional month/year; "iso" with iso (YYYY-MM-DD) only when a full date is stated. Never compute dates yourself: use today's date from <context> only to understand the words.
 - category / merchant / account / to_account / counterparty: the NAME as the user wrote it (not translated, not invented), or null. category = what the money was for (vegetables, petrol, salary); merchant = shop/brand (Uber, Swiggy); account = where the money came from or went to (cash, HDFC bank, HDFC credit card); to_account = destination account of a transfer or card payment; counterparty = the person for lend/borrow/repayment.
 - participants: ONLY for split_expense: the OTHER people in the split (never the user), each with name and amount. amount is what that person owes if the user stated it, else null. "dinner 2400 split between me, Rahul and Amit" -> participants Rahul (null), Amit (null): the app splits equally including the user. "dinner 3000, Rahul owes 1200 and Amit 800" -> Rahul 1200, Amit 800. Otherwise null.
+- For create_account: account is the account NAME as the user wrote it ("HDFC", "Axis bank", "cash"), amount is the opening balance (or null if none was stated), payment_method only if it is clearly cash, wallet or credit_card, else null. Adding an account or setting its starting balance is NEVER an expense or income. Do not use it for money that was spent or received.
 - For create_loan (tracking a loan the user is repaying): amount is the amount STILL OUTSTANDING, description the loan name ("bike", "home"), interest_rate the yearly rate as a number ("10.5"), tenure_months the months LEFT, emi_amount the EMI only if the user states it. For emi_payment ("paid bike EMI", "EMI 5500 paid"): description is the loan name, amount the payment if stated (else null), account where it was paid from.
 - For create_goal: amount is the TARGET, description is the goal name ("bike", "emergency fund"), date is the target date when stated ("by June"), action set (default) or remove.
 - action: ONLY for create_budget, create_recurring and create_goal: set (default) or remove ("cancel Netflix", "remove my food budget"). For a budget, amount is the monthly limit and category the expense category the limit is for (null = overall). Otherwise null.
@@ -153,6 +154,8 @@ I want to save 100000 for a bike by June -> create_goal, amount 100000, descript
 cancel my bike goal -> create_goal, action remove, description "bike"
 how are my goals going? -> query, goals
 bike loan 120000 outstanding at 10.5% for 24 months, emi 5538 -> create_loan, amount 120000, description "bike", interest_rate "10.5", tenure_months 24, emi_amount 5538
+my opening balance on hdfc is 52340 -> create_account, account "hdfc", amount 52340
+add Axis bank account with 12000 -> create_account, account "Axis bank", amount 12000
 paid bike EMI -> record_event, emi_payment, amount null, description "bike"
 paid 5538 EMI from hdfc -> record_event, emi_payment, 5538, account "hdfc"
 what loans do I have? -> query, loans

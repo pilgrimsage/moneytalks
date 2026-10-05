@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Models\UserAlias;
 use App\Models\WebhookEvent;
 use App\Models\WhatsappMessage;
+use App\Services\Accounts\AccountSetupService;
 use App\Services\AI\DTO\StructuredResponse;
 use App\Services\AI\Exceptions\AITransientException;
 use App\Services\AI\FakeAIProvider;
@@ -306,7 +307,7 @@ describe('failures never lose the message', function () {
     it('tells the user when the ledger refuses a posting, without writing anything', function () {
         FakeAIProvider::respond(aiEnvelope(aiItem()));
         // Close the user's cash account after the validator would have chosen it.
-        app()->bind(ProposalValidator::class, fn () => new class(app(EntityResolver::class), app(AmountNormalizer::class), app(DateResolver::class), app(DebtService::class), app(LoanService::class)) extends ProposalValidator
+        app()->bind(ProposalValidator::class, fn () => new class(app(EntityResolver::class), app(AmountNormalizer::class), app(DateResolver::class), app(DebtService::class), app(LoanService::class), app(AccountSetupService::class)) extends ProposalValidator
         {
             public function decide(User $user, array $envelope, string $text, CarbonImmutable $now): array
             {

@@ -305,7 +305,7 @@ describe('what is recognised but not recorded', function () {
         $d = ($this->decide)(aiItem(['event_type' => $type, 'counterparty' => 'Rahul']), 'gave rahul 250');
 
         expect($d->kind)->toBe(Decision::UNSUPPORTED)->and($d->posting)->toBeNull();
-    })->with(['refund', 'opening_balance']);
+    })->with(['refund']); // opening_balance is handled by AccountSetupService (tests/Feature/Accounts)
 
     it('hands undo and correction requests on to the transaction logic, carrying what the model understood', function (string $intent, string $kind) {
         $d = ($this->decide)(aiItem(['intent' => $intent, 'event_type' => null, 'amount' => '600', 'target_kind' => 'last', 'target_amount' => '500']), 'actually that was 600, not 500');

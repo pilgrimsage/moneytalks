@@ -74,6 +74,9 @@ Design docs per area are in `docs/` (`ledger.md`, `whatsapp.md`, `ai.md`, `testi
 - New metric: add it to `TransactionParser::QUERY_METRICS`, bump `VERSION`, plan it in `QueryPlanner`, format it in `ReportFormatter`,
   and test it against an independent oracle in `tests/Feature/Reporting`. Exports are CSV only; text cells go through `ExportService::safe()`.
 
+## Accounts rules of thumb
+- Adding an account / an opening balance from chat goes through `AccountSetupService` (`plan()` validates with no writes, `apply()` runs only after a Confirm tap). Never an expense or income; one live opening balance per account; the amount must be provably in the message and account names match exactly.
+
 ## Debts rules of thumb (M8)
 - Debts are ledger accounts per person (`AccountService::personAccount`) plus derived `debt_records`/`debt_settlements` kept by `DebtService` inside the
   ledger transaction. The verifier checks they agree; never write those tables elsewhere.

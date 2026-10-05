@@ -53,6 +53,7 @@ You can say:
 "transfer 1000 from SBI to HDFC"
 "aaj 200 sabji" or "500 petrol"
 "balance" to see your accounts
+"add Axis bank with 12000" or "opening balance on HDFC is 52340"
 "gave Rahul 2000" or "Rahul returned 500"
 "dinner 2400 split with Rahul and Amit"
 "paid HDFC card 12000 from HDFC bank"

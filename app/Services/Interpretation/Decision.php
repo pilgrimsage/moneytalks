@@ -29,6 +29,8 @@ final class Decision
 
     public const RECURRING = 'recurring';   // create or stop a repeating payment (validated here, stored by RecurringService)
 
+    public const ACCOUNT = 'account';       // add an account and/or set its opening balance (always confirmed with a tap)
+
     public const EXPORT = 'export';         // a file export of the user's own transactions
 
     public function __construct(

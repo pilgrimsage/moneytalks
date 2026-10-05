@@ -10,6 +10,7 @@ use App\Enums\TransactionType;
 use App\Models\LedgerTransaction;
 use App\Models\User;
 use App\Models\WhatsappMessage;
+use App\Services\Accounts\AccountSetupService;
 use App\Services\Budgets\BudgetService;
 use App\Services\Conversation\ConversationStore;
 use App\Services\Conversation\PendingActionService;
@@ -72,6 +73,7 @@ class InterpretationHandler implements InboundHandler
         private readonly BudgetService $budgets,
         private readonly RecurringService $recurring,
         private readonly GoalService $goals,
+        private readonly AccountSetupService $accountSetup,
         private readonly WhatsAppProvider $provider,
         private readonly MediaGuard $mediaGuard,
         private readonly SpeechToTextProvider $stt,
@@ -279,7 +281,7 @@ class InterpretationHandler implements InboundHandler
                 Decision::CORRECT => $this->correctLine($user, $d, $message, $text, $now, $ask),
                 Decision::QUERY => $this->queryLine($user, $d, $now),
                 Decision::RECURRING => $this->planLine($user, $d, $message, $text, $source, $now, $ask),
-                Decision::LOAN, Decision::GOAL, Decision::BUDGET => $this->planLine($user, $d, $message, $text, $source, $now, $ask),
+                Decision::LOAN, Decision::ACCOUNT, Decision::GOAL, Decision::BUDGET => $this->planLine($user, $d, $message, $text, $source, $now, $ask),
                 Decision::EXPORT => $this->exportLine($user, $d, $now, $document),
                 Decision::HELP => $this->replies->help(),
                 default => $d->message,
@@ -390,7 +392,7 @@ class InterpretationHandler implements InboundHandler
     private function planLine(User $user, Decision $d, InboundMessage $message, string $text, string $source, CarbonImmutable $now, \Closure $ask): string
     {
         $item = (array) $d->item;
-        if ($d->kind !== Decision::LOAN && $source === 'whatsapp_text') {
+        if (! in_array($d->kind, [Decision::LOAN, Decision::ACCOUNT], true) && $source === 'whatsapp_text') {
             return match ($d->kind) {
                 Decision::GOAL => $this->goals->apply($user, $item, $text, $now),
                 Decision::BUDGET => $this->budgets->apply($user, $item, $text, $now),
@@ -398,7 +400,7 @@ class InterpretationHandler implements InboundHandler
             };
         }
 
-        $prompt = $this->planPrompt($d->kind, $item);
+        $prompt = $d->kind === Decision::ACCOUNT ? $this->accountSetup->describe($user, (array) $item['acct']) : $this->planPrompt($d->kind, $item);
 
         return $ask(ConversationStore::CONFIRM, PendingActionService::payload(PendingActionService::APPLY, $prompt, $message->waMessageId, null, ['intent' => $d->kind, 'item' => $item, 'text' => $text]), $prompt, ['Confirm', 'Cancel']);
     }

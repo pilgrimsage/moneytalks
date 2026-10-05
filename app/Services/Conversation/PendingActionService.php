@@ -9,6 +9,7 @@ use App\Enums\TransactionType;
 use App\Models\ConversationState;
 use App\Models\LedgerTransaction;
 use App\Models\User;
+use App\Services\Accounts\AccountSetupService;
 use App\Services\Budgets\BudgetService;
 use App\Services\Goals\GoalService;
 use App\Services\Interpretation\CommandBuilder;
@@ -47,6 +48,7 @@ class PendingActionService
         private readonly RecurringService $recurring,
         private readonly GoalService $goals,
         private readonly LoanService $loans,
+        private readonly AccountSetupService $accountSetup,
     ) {}
 
     /** Payload for a confirmation state. @param array<string, mixed> $extra */
@@ -66,7 +68,7 @@ class PendingActionService
                 self::RECORD => $this->record($user, $state, $p, $triggerWaId),
                 self::CORRECT => $this->correct($user, $state, $p, $triggerWaId),
                 self::UNDO => $this->undo($user, $p, $triggerWaId),
-                self::APPLY => $this->apply($user, $p),
+                self::APPLY => $this->apply($user, $p, "confirm:{$state->id}"),
                 default => $this->replies->expired(),
             };
         } catch (LedgerException $e) {
@@ -109,7 +111,7 @@ class PendingActionService
         return $this->replies->corrected($before, $posting->describe());
     }
 
-    private function apply(User $user, array $p): string
+    private function apply(User $user, array $p, string $key): string
     {
         $item = (array) $p['item'];
         $text = (string) $p['text'];
@@ -117,6 +119,7 @@ class PendingActionService
 
         return match ($p['intent']) {
             Decision::LOAN => $this->loans->create($user, $item, $text, $now),
+            Decision::ACCOUNT => $this->accountSetup->apply($user, (array) $item['acct'], $key),
             Decision::GOAL => $this->goals->apply($user, $item, $text, $now),
             Decision::BUDGET => $this->budgets->apply($user, $item, $text, $now),
             Decision::RECURRING => isset($item['rr_remove']) ? $this->recurring->cancel($user, $item['rr_remove']) : $this->recurring->create($user, $item['rr']),

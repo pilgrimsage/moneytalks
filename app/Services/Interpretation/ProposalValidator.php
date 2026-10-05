@@ -12,6 +12,7 @@ use App\Models\Category;
 use App\Models\LedgerAccount;
 use App\Models\Merchant;
 use App\Models\User;
+use App\Services\Accounts\AccountSetupService;
 use App\Services\AI\Prompts\TransactionParser as P;
 use App\Services\Loans\LoanService;
 use App\Services\Recurring\RecurringService;
@@ -52,6 +53,7 @@ class ProposalValidator
         private readonly DateResolver $dates,
         private readonly DebtService $debts,
         private readonly LoanService $loans,
+        private readonly AccountSetupService $accountSetup,
     ) {}
 
     /**
@@ -176,6 +178,7 @@ class ProposalValidator
             'create_budget' => Decision::intent(Decision::BUDGET, $i, $item),
             'create_goal' => Decision::intent(Decision::GOAL, $i, $item),
             'create_loan' => Decision::intent(Decision::LOAN, $i, $item),
+            'create_account' => $this->decideAccount($user, $item, $i, $text),
             'create_recurring' => $this->decideRecurring($user, $item, $i, $text, $now),
             'help' => new Decision(Decision::HELP, $i, 'help'),
             'unknown' => Decision::unsupported($i, 'unknown', $this->didNotUnderstand()),
@@ -231,6 +234,16 @@ class ProposalValidator
     }
 
     /** A repeating payment, or stopping one. Stored by RecurringService; nothing is posted to the ledger here. */
+    /** "Add the HDFC account with 52340" / "opening balance on HDFC is 52340": validated here, applied only after a Confirm tap. */
+    private function decideAccount(User $user, array $item, int $i, string $text): Decision
+    {
+        $result = $this->accountSetup->plan($user, $item, $text);
+
+        return isset($result['plan'])
+            ? Decision::intent(Decision::ACCOUNT, $i, ['acct' => $result['plan']] + $item)
+            : Decision::clarify($i, $result['reason'], $result['message']);
+    }
+
     private function decideRecurring(User $user, array $item, int $i, string $text, CarbonImmutable $now): Decision
     {
         $name = trim(preg_replace('/\s+/u', ' ', (string) ($item['merchant'] ?? '')) ?: '');
@@ -601,6 +614,9 @@ class ProposalValidator
         $typeName = $item['event_type'] ?? null;
         if ($typeName === null) {
             return Decision::clarify($i, 'event_type_missing', 'I couldn\'t tell what kind of entry this is (an expense, income or a transfer between your own accounts). Could you rephrase it, e.g. "spent 250 on vegetables"?');
+        }
+        if ($typeName === 'opening_balance') { // same thing as create_account, however the model chose to phrase it
+            return $this->decideAccount($user, $item, $i, $text);
         }
         if ($typeName === 'emi_payment') {
             return $this->decideEmi($user, $item, $i, $text, $now);

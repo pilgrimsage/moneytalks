@@ -150,7 +150,7 @@ class EvalRunner
                 $problems = array_merge($problems, $fieldProblems);
                 $report->wrongRecords++;
             }
-            if (in_array($got->kind, [Decision::UNDO, Decision::CORRECT, Decision::QUERY, Decision::EXPORT, Decision::BUDGET, Decision::RECURRING, Decision::GOAL, Decision::LOAN], true)) {
+            if (in_array($got->kind, [Decision::UNDO, Decision::CORRECT, Decision::QUERY, Decision::EXPORT, Decision::BUDGET, Decision::RECURRING, Decision::GOAL, Decision::LOAN, Decision::ACCOUNT], true)) {
                 $problems = array_merge($problems, $this->intentFields($want, $got, $i));
             }
         }
