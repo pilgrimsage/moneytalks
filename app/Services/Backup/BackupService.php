@@ -201,12 +201,21 @@ class BackupService
         $c = (array) config('database.connections.mysql');
         $args = [(string) config('backup.mysqldump_binary'), '-h', (string) $c['host'], '-P', (string) $c['port'], '-u', (string) $c['username'],
             '--single-transaction', '--quick', '--routines', '--no-tablespaces', '--default-character-set=utf8mb4'];
-        if (str_contains((string) shell_exec(escapeshellarg((string) config('backup.mysqldump_binary')).' --help 2>/dev/null'), 'column-statistics')) {
+        if ($this->dumpSupportsColumnStatistics()) {
             $args[] = '--column-statistics=0'; // MySQL 8 client talking to MariaDB/older servers
         }
         $args[] = (string) $c['database'];
 
         return $args;
+    }
+
+    /** Uses proc_open (Symfony Process), not shell_exec: shared hosts such as Hostinger disable shell_exec/exec/popen. */
+    private function dumpSupportsColumnStatistics(): bool
+    {
+        $help = new Process([(string) config('backup.mysqldump_binary'), '--help'], null, null, null, 30);
+        $help->run();
+
+        return str_contains($help->getOutput(), 'column-statistics');
     }
 
     /** @return list<string> */
