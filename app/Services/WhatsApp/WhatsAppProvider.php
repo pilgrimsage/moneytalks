@@ -23,6 +23,12 @@ interface WhatsAppProvider
     /** Authenticity of a POST, computed over the RAW body bytes. */
     public function verifySignature(string $rawBody, ?string $signatureHeader): bool;
 
+    /** Name of the request header that carries the signature / secret checked by verifySignature(). */
+    public function signatureHeader(): string;
+
+    /** Whether free-form messages are limited to a window after the user's last message (WhatsApp: yes, Telegram: no). */
+    public function enforcesServiceWindow(): bool;
+
     public function parseWebhook(array $payload): ParsedWebhook;
 
     /**

@@ -13,6 +13,7 @@
 | M9 | Budgets + alerts, recurring payments with reminders, goals, EMI loans, monthly summary | done |
 | M10 | Voice notes (pluggable STT) and receipt photos (Claude vision) | done (voice needs your STT key) |
 | M11 | Health checks, cost report, AI kill switch and budget cap | done (console + `/health`, no admin UI) |
+| Telegram | Telegram Bot API as a second chat channel (`TelegramProvider`, webhook command) | done; WhatsApp parked (Meta business account locked) |
 | M12 | Security review, encrypted backups + restore drill, privacy export/erase, retention, runbooks | done for personal mode |
 
 **Everything is built and tested against fakes and mocked HTTP only.** It has not yet been run against the real Meta and Anthropic services; the first live session is the

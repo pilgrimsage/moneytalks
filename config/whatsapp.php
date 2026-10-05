@@ -3,7 +3,7 @@
 use App\Services\WhatsApp\Handlers\InterpretationHandler;
 
 return [
-    // meta = the real Cloud API. fake = no network (local development and tests); refused in production.
+    // meta = the real WhatsApp Cloud API. telegram = Telegram Bot API. fake = no network (local development and tests); refused in production.
     'provider' => env('WHATSAPP_PROVIDER', 'meta'),
 
     'meta' => [
@@ -16,6 +16,15 @@ return [
         'access_token' => env('META_ACCESS_TOKEN'),
         'verify_token' => env('META_WEBHOOK_VERIFY_TOKEN'),
         'timeout_seconds' => (int) env('META_TIMEOUT_SECONDS', 10),
+    ],
+
+    // Telegram Bot API (WHATSAPP_PROVIDER=telegram). The bot token is a secret: it is part of every Bot API URL, so it must
+    // never be logged or sent anywhere except api_base.
+    'telegram' => [
+        'api_base' => env('TELEGRAM_API_BASE', 'https://api.telegram.org'),
+        'bot_token' => env('TELEGRAM_BOT_TOKEN'),
+        'webhook_secret' => env('TELEGRAM_WEBHOOK_SECRET'), // sent back by Telegram in X-Telegram-Bot-Api-Secret-Token
+        'timeout_seconds' => (int) env('TELEGRAM_TIMEOUT_SECONDS', 15),
     ],
 
     // Free-form messages are only allowed this long after the user's last inbound message.

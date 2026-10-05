@@ -1,3 +1,18 @@
+# Chat channels: Telegram and WhatsApp
+
+`WHATSAPP_PROVIDER` picks the channel (the name is historical): `telegram` (recommended), `meta` (WhatsApp Cloud API) or `fake` (local/tests). Everything below the provider
+interface (users, allow-list, processing, replies, media rules) is identical for both.
+
+## Telegram
+`TelegramProvider` is the only class that knows the Bot API. A private chat id equals the Telegram user id (a plain number), so it uses the same "id" slot, `ALLOWED_WA_IDS` allow-list and blind index as a WhatsApp number.
+- **Webhook:** `POST /webhooks/telegram`, authenticated by the secret you registered with `setWebhook`, which Telegram returns in `X-Telegram-Bot-Api-Secret-Token` (constant-time compare, fail closed without `TELEGRAM_WEBHOOK_SECRET`). Manage it with `php artisan moneytalks:telegram:webhook info|set|delete`.
+- **Served:** text, voice notes, photos, button taps (inline keyboard; callback data = the button id, and every tap is answered so the spinner stops). Groups, channels and other bots are ignored. `/start` and `/help` mean `help`; `/balance` means `balance`.
+- **No window, no templates:** Telegram has no 24-hour limit, so `enforcesServiceWindow()` is false and reminders always send. Templates are refused. No delivery receipts, so no statuses.
+- **Formatting:** replies use `*bold*` and `_italic_`; they are converted to Telegram HTML with everything else escaped.
+- **Media:** `getFile`, then a download from `api_base` only (the token is in the URL, so it never goes elsewhere); the type comes from the file extension and `MediaGuard` still checks the bytes.
+- **Secrets:** the bot token is part of every API URL. Errors and logs carry Telegram's description and code only, never a URL or the HTTP client's message.
+- Setup steps are in the root `README.md`. Env: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `ALLOWED_WA_IDS`.
+
 # WhatsApp (Meta Cloud API, direct)
 
 Meta's numeric limits (button caps, file sizes, error codes) change; re-verify against Meta's current docs before go-live: Graph API version (`META_GRAPH_VERSION`),

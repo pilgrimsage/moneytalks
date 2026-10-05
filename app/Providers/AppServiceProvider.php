@@ -11,6 +11,7 @@ use App\Services\Speech\OpenAiCompatibleSpeechProvider;
 use App\Services\Speech\SpeechToTextProvider;
 use App\Services\WhatsApp\Handlers\InboundHandler;
 use App\Services\WhatsApp\MetaWhatsAppProvider;
+use App\Services\WhatsApp\TelegramProvider;
 use App\Services\WhatsApp\Testing\FakeWhatsAppProvider;
 use App\Services\WhatsApp\WhatsAppProvider;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -29,6 +30,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(WhatsAppProvider::class, function ($app) {
             return match (config('whatsapp.provider')) {
                 'meta' => new MetaWhatsAppProvider,
+                'telegram' => new TelegramProvider,
                 'fake' => $app->isProduction()
                     ? throw new RuntimeException('WHATSAPP_PROVIDER=fake is not allowed in production.')
                     : new FakeWhatsAppProvider,

@@ -39,7 +39,7 @@ class WhatsAppWebhookController extends Controller
         }
 
         // Authenticity is checked on the raw bytes, before the body is parsed or trusted.
-        if (! $provider->verifySignature($raw, $request->header('X-Hub-Signature-256'))) {
+        if (! $provider->verifySignature($raw, $request->header($provider->signatureHeader()))) {
             Log::warning('whatsapp.webhook.bad_signature', ['ip' => $request->ip()]);
 
             return response('Forbidden', 403);

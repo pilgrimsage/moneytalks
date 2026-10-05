@@ -7,7 +7,7 @@ use Illuminate\Console\Command;
 
 class CreateUser extends Command
 {
-    protected $signature = 'moneytalks:user:create {wa_id : WhatsApp ID, digits with country code} {--name= : Display name}';
+    protected $signature = 'moneytalks:user:create {wa_id : WhatsApp number (digits with country code) or your numeric Telegram user id} {--name= : Display name}';
 
     protected $description = 'Create (or top up) a user and seed their default categories, aliases and merchants';
 

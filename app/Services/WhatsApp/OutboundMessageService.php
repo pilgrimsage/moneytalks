@@ -57,6 +57,10 @@ class OutboundMessageService
 
     public function isWithinWindow(User $user): bool
     {
+        if (! $this->provider->enforcesServiceWindow()) {
+            return true; // Telegram has no customer-service window
+        }
+
         return $user->last_inbound_at !== null
             && $user->last_inbound_at->greaterThan(now()->subHours((int) config('whatsapp.window_hours')));
     }

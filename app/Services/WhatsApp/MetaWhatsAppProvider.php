@@ -52,6 +52,16 @@ class MetaWhatsAppProvider implements WhatsAppProvider
         return hash_equals(hash_hmac('sha256', $rawBody, $secret), substr($signatureHeader, 7));
     }
 
+    public function signatureHeader(): string
+    {
+        return 'X-Hub-Signature-256';
+    }
+
+    public function enforcesServiceWindow(): bool
+    {
+        return true;
+    }
+
     public function parseWebhook(array $payload): ParsedWebhook
     {
         $messages = [];

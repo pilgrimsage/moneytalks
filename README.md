@@ -1,6 +1,6 @@
 # MoneyTalks
 
-A personal finance manager you talk to on **WhatsApp**. You message it ("spent 250 on vegetables", "Rahul returned 1000", "how much did I spend this month?");
+A personal finance manager you talk to on **Telegram** (or WhatsApp). You message it ("spent 250 on vegetables", "Rahul returned 1000", "how much did I spend this month?");
 an AI model (Claude Haiku) turns the message into a *proposal*; validated, deterministic code posts it to a **double-entry ledger**. The AI never writes to the
 books and never computes a number: every figure you see comes from the ledger.
 
@@ -25,20 +25,20 @@ Progress and balances are always derived from the ledger. Anything that moves mo
 ## Status
 
 All milestones M0 to M12 are built; see [`docs/roadmap.md`](docs/roadmap.md) for the table and what is deliberately not built.
-**Honest caveat: it has been tested with fakes and mocked HTTP, not yet against the real Meta and Anthropic services.** Follow the steps below in order,
+**Honest caveat: it has been tested with fakes and mocked HTTP, not yet against the real Telegram/Meta services (the real Anthropic model has been checked with `moneytalks:ai:eval --live`).** Follow the steps below in order,
 and do not skip step 6 ("Prove it before trusting it").
 
 ## Stack
-Laravel 13 · PHP 8.3+ · MySQL 8 / MariaDB (utf8mb4) · database queue + cron (no Redis, no daemons: Hostinger shared hosting works) · Anthropic Claude Haiku · Meta WhatsApp Cloud API.
+Laravel 13 · PHP 8.3+ · MySQL 8 / MariaDB (utf8mb4) · database queue + cron (no Redis, no daemons: Hostinger shared hosting works) · Anthropic Claude Haiku · Telegram Bot API (recommended) or Meta WhatsApp Cloud API.
 
 ---
 
-# Setup (5 steps, one evening)
+# Setup (5 steps)
 
-You need: Hostinger with **SSH + Composer + MySQL** and PHP 8.3/8.4, a Meta developer account, an Anthropic Console account.
+You need: Hostinger with **SSH + Composer + MySQL** and PHP 8.3/8.4, a Telegram account, an Anthropic Console account.
 Back up `APP_KEY` and `PII_BLIND_INDEX_KEY` off the server: losing either makes stored data unreadable.
 
-## 1. Try locally (optional, free, no Meta/Anthropic needed)
+## 1. Try locally (optional, free, no Telegram/Meta/Anthropic needed)
 ```bash
 cp .env.example .env && composer install && php artisan key:generate
 # create a local MySQL database, set DB_* in .env (WHATSAPP_PROVIDER=fake and AI_PRIMARY_PROVIDER=fake for no network)
@@ -57,12 +57,12 @@ cd ~/domains/<yourdomain>/ && git clone <your repo> money && cd money     # or u
 composer install --no-dev --optimize-autoloader
 cp .env.example .env && php artisan key:generate && nano .env
 ```
-In `.env` set: `APP_URL`, `DB_*`, `ALLOWED_WA_IDS` (your number, digits with country code, no `+`), `ANTHROPIC_API_KEY`, and the `META_*` values from step 5.
-Generate each secret with `php -r "echo bin2hex(random_bytes(32));"`: `PII_BLIND_INDEX_KEY`, `HEALTH_TOKEN`, `META_WEBHOOK_VERIFY_TOKEN`, and
-`BACKUP_ENCRYPTION_KEY` (keep a copy off the server). Keep `APP_ENV=production`, `WHATSAPP_PROVIDER=meta`.
+In `.env` set: `APP_URL`, `DB_*`, `ANTHROPIC_API_KEY`, and the Telegram values from step 5 (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `ALLOWED_WA_IDS` = your Telegram user id).
+Generate each secret with `php -r "echo bin2hex(random_bytes(32));"`: `PII_BLIND_INDEX_KEY`, `HEALTH_TOKEN`, `TELEGRAM_WEBHOOK_SECRET` and
+`BACKUP_ENCRYPTION_KEY` (keep a copy off the server). Keep `APP_ENV=production`, `WHATSAPP_PROVIDER=telegram`.
 ```bash
 php artisan migrate --force && php artisan config:cache && php artisan route:cache
-php artisan moneytalks:user:create <your number> --name="<you>"
+php artisan moneytalks:user:create <your telegram id> --name="<you>"
 ```
 `https://<sub>/up` must answer 200; `https://<sub>/.env` must not be reachable.
 
@@ -74,22 +74,33 @@ hPanel -> Advanced -> Cron Jobs, two jobs, **every minute**:
 ```
 (Use the full PHP path if the default is older than 8.3, e.g. `/opt/alt/php83/usr/bin/php`.) After two minutes `php artisan moneytalks:health` shows the scheduler OK.
 
-## 5. Connect Meta WhatsApp (free test number is enough)
+## 5. Connect Telegram (free, about 5 minutes, no business account)
+1. In Telegram, open **@BotFather** -> `/newbot` -> pick a name and a username ending in `bot`. Copy the **token** -> `TELEGRAM_BOT_TOKEN`.
+2. Find your own numeric id: message **@userinfobot** and copy the number it shows -> `ALLOWED_WA_IDS` (only this id can use the bot).
+3. Make a random secret: `php -r "echo bin2hex(random_bytes(32));"` -> `TELEGRAM_WEBHOOK_SECRET`. Set `WHATSAPP_PROVIDER=telegram` in `.env`.
+4. On the server: `php artisan config:cache`, then create yourself with `php artisan moneytalks:user:create <your telegram id> --name="<you>"`.
+5. Register the webhook: `php artisan moneytalks:telegram:webhook set` (uses `APP_URL/webhooks/telegram`; `info` shows its status, `delete` removes it).
+6. Open your bot in Telegram, press **Start**, and send `help`.
+
+<details><summary>Optional: WhatsApp instead (Meta Cloud API; needs a Meta business portfolio)</summary>
+
+Set `WHATSAPP_PROVIDER=meta`, then:
 1. developers.facebook.com -> **Create App** (Business) -> add **WhatsApp**. In **API Setup** copy the **Phone number ID** (`META_PHONE_NUMBER_ID`) and
    **WhatsApp Business Account ID** (`META_WABA_ID`), and add + verify your own phone as a recipient.
 2. App Settings -> Basic: **App ID** (`META_APP_ID`) and **App secret** (`META_APP_SECRET`).
 3. Business Settings -> **System users** -> add an Admin, assign the app and WhatsApp account, **generate a token** with `whatsapp_business_messaging` and
    `whatsapp_business_management` -> `META_ACCESS_TOKEN` (the dashboard token expires in 24 hours).
 4. WhatsApp -> Configuration -> Webhook: URL `https://<sub>/webhooks/whatsapp`, verify token = your `META_WEBHOOK_VERIFY_TOKEN`; **subscribe to `messages`**.
-5. `php artisan config:cache`.
+5. `php artisan config:cache`. If Meta reports "Business Account locked" (error 131031), replies cannot be delivered until Meta lifts the lock (see its Security Centre).
+</details>
 
 ## Check it works
 ```bash
 php artisan moneytalks:ai:eval --live        # ~10 US cents; must end "Eval gate passed", else stop and do not use real data
 php artisan moneytalks:backup && php artisan moneytalks:backup:verify
 ```
-Then WhatsApp the test number: `help`, `spent 250 on vegetables`, `balance`, `undo`, `how much did I spend this month?`.
-It can only reply within 24 hours of your last message, so message it first. Nothing arrives? `php artisan moneytalks:health`, `storage/logs/laravel.log`, [runbooks](docs/runbooks.md).
+Then message your bot: `help`, `spent 250 on vegetables`, `balance`, `undo`, `how much did I spend this month?`.
+(On WhatsApp it can only reply within 24 hours of your last message, so message it first. Telegram has no such limit.) Nothing arrives? `php artisan moneytalks:health`, `storage/logs/laravel.log`, [runbooks](docs/runbooks.md).
 Also set `AI_DAILY_BUDGET_GLOBAL_USD` (e.g. `1`) and point a free uptime monitor at `GET /health` with `Authorization: Bearer <HEALTH_TOKEN>`.
 
 **Optional:** voice notes (`STT_PROVIDER=openai_compatible`, `STT_API_KEY`); opening balances

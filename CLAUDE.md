@@ -1,6 +1,6 @@
 # MoneyTalks: notes for contributors and coding agents
 
-WhatsApp-first personal finance manager (Laravel 13, MySQL/MariaDB on Hostinger, Claude Haiku, Meta
+Chat-first personal finance manager on Telegram or WhatsApp (Laravel 13, MySQL/MariaDB on Hostinger, Claude Haiku, Telegram Bot API / Meta
 Cloud API). Target host is shared-hosting-like: no Redis, no daemons; database queue + cron (`docs/deployment.md`). **Read `docs/README.md` first**; the design in `docs/` is the source of truth and
 `docs/roadmap.md` lists the milestones. Do not claim a feature exists unless it is in the code.
 
@@ -47,7 +47,8 @@ Design docs per area are in `docs/` (`ledger.md`, `whatsapp.md`, `ai.md`, `testi
 - All outbound goes through `OutboundMessageService` (window check, retries, `dedupe_key`). Never call the provider directly.
 - Inbound handling must be safe to run twice for one message: use ledger idempotency keys and `reply:{wa_message_id}:{n}` reply keys.
 - Never store content of messages from senders that are not allowed; never log message bodies or tokens.
-- New vendor = new `WhatsAppProvider` implementation; nothing else may know Meta's wire format.
+- New vendor = new `WhatsAppProvider` implementation; nothing else may know Meta's or Telegram's wire format. `WHATSAPP_PROVIDER` selects `telegram` (recommended), `meta` or `fake`; the name is historical.
+- Telegram: the bot token is in every API URL, so never log a URL, request or HTTP-client exception message from `TelegramProvider`. Its ids are plain numbers and live in the same `wa_id` slot / `ALLOWED_WA_IDS`.
 
 ## AI rules of thumb (M5)
 - All model calls go through `AIGateway` (routing, retry, `ai_requests` row, cost). Never call a provider directly from domain code.
