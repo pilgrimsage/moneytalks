@@ -61,7 +61,7 @@ class BackupService
         }
 
         $this->prune($keep);
-        Cache::forever(self::LAST_KEY, now());
+        Cache::forever(self::LAST_KEY, now()->timestamp);
 
         return $final;
     }

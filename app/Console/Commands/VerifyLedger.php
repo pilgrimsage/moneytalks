@@ -18,7 +18,7 @@ class VerifyLedger extends Command
     {
         $issues = $verifier->verify($this->option('user'));
         if (! $this->option('user')) {
-            Cache::put(HealthCheck::LEDGER_KEY, ['ok' => $issues === [], 'at' => now()], now()->addDays(3));
+            Cache::put(HealthCheck::LEDGER_KEY, ['ok' => $issues === [], 'at' => now()->timestamp], now()->addDays(3));
         }
 
         if ($issues === []) {

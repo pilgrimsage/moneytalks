@@ -3,6 +3,7 @@
 namespace App\Services\Ops;
 
 use App\Services\Backup\BackupService;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Throwable;
@@ -17,6 +18,17 @@ class HealthCheck
 
     public const LEDGER_KEY = 'ops.ledger.verify';
 
+    /**
+     * Cache values are stored as unix timestamps: Laravel's cache refuses to restore objects (serializable_classes=false),
+     * so a stored Carbon comes back broken from the database store. Also accepts a date object or string.
+     */
+    public static function asTime(mixed $value): CarbonImmutable
+    {
+        return is_int($value) || is_float($value) || (is_string($value) && ctype_digit($value))
+            ? CarbonImmutable::createFromTimestamp((int) $value)
+            : CarbonImmutable::parse($value);
+    }
+
     public function __construct(private readonly AiSwitch $ai) {}
 
     /** @return list<array{name: string, ok: bool, critical: bool, detail: string}> */
@@ -26,7 +38,7 @@ class HealthCheck
             $this->check('database', true, fn () => DB::select('select 1') ? [true, 'reachable'] : [false, 'no answer']),
             $this->check('scheduler', true, function () {
                 $beat = Cache::get(self::HEARTBEAT_KEY);
-                $age = $beat ? (int) abs(now()->diffInMinutes($beat)) : null;
+                $age = $beat ? (int) abs(now()->diffInMinutes(self::asTime($beat))) : null;
 
                 return $age === null ? [false, 'no heartbeat yet (is the cron job running?)'] : [$age <= 5, "last beat {$age} min ago"];
             }),
@@ -53,7 +65,7 @@ class HealthCheck
                 if (! $last) {
                     return [false, 'never run (it runs nightly)'];
                 }
-                $age = (int) abs(now()->diffInHours($last['at']));
+                $age = (int) abs(now()->diffInHours(self::asTime($last['at'])));
 
                 return [$last['ok'] && $age <= 36, ($last['ok'] ? 'OK' : 'FAILED').", {$age} h ago"];
             }),
@@ -67,7 +79,7 @@ class HealthCheck
                     return [false, 'not configured (BACKUP_ENCRYPTION_KEY)'];
                 }
                 $last = Cache::get(BackupService::LAST_KEY);
-                $age = $last ? (int) abs(now()->diffInHours($last)) : null;
+                $age = $last ? (int) abs(now()->diffInHours(self::asTime($last))) : null;
 
                 return $age === null ? [false, 'no backup yet'] : [$age <= 36, "last backup {$age} h ago"];
             }),

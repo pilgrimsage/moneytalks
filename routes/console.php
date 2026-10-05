@@ -26,7 +26,7 @@ Schedule::command('moneytalks:recurring:run')->hourly()->withoutOverlapping();
 Schedule::command('moneytalks:monthly:close')->hourly()->withoutOverlapping();
 
 // Heartbeat for moneytalks:health: proves the cron job is really running the scheduler.
-Schedule::call(fn () => Cache::put(HealthCheck::HEARTBEAT_KEY, now(), now()->addDay()))->name('heartbeat')->everyMinute();
+Schedule::call(fn () => Cache::put(HealthCheck::HEARTBEAT_KEY, now()->timestamp, now()->addDay()))->name('heartbeat')->everyMinute();
 
 // Encrypted database backup (skipped with a warning until BACKUP_ENCRYPTION_KEY is set).
 Schedule::command('moneytalks:backup')->dailyAt('03:40')->withoutOverlapping();

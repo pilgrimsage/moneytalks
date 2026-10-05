@@ -34,6 +34,18 @@ describe('health checks', function () {
         expect(app(HealthCheck::class)->healthy())->toBeTrue()->and(($this->status)()['ledger verification']['detail'])->toContain('OK');
     });
 
+    it('works through the database cache store, which cannot restore objects (the production setup)', function () {
+        config(['cache.default' => 'database']);
+        Cache::flush();
+
+        // exactly what the scheduler heartbeat and moneytalks:ledger:verify store
+        Cache::put(HealthCheck::HEARTBEAT_KEY, now()->timestamp, now()->addDay());
+        $this->artisan('moneytalks:ledger:verify')->assertSuccessful();
+
+        $c = ($this->status)();
+        expect($c['scheduler']['ok'])->toBeTrue()->and($c['ledger verification']['ok'])->toBeTrue()->and($c['ledger verification']['detail'])->toContain('OK');
+    });
+
     it('notices a stale heartbeat and a failed ledger verification', function () {
         Cache::put(HealthCheck::HEARTBEAT_KEY, now()->subMinutes(30), now()->addDay());
         Cache::put(HealthCheck::LEDGER_KEY, ['ok' => false, 'at' => now()], now()->addDay());
