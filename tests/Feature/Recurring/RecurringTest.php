@@ -21,6 +21,8 @@ beforeEach(function () {
     FakeWhatsAppProvider::reset();
     FakeAIProvider::reset();
     config(['whatsapp.outbound.retry_backoff_ms' => [0, 0]]);
+    // freeze the clock: the dates below are fixed, so the tests must not depend on the real date
+    $this->travelTo(CarbonImmutable::parse('2026-10-04 12:00', 'Asia/Kolkata'));
     $this->user = ledgerUser('919876543210');
     $this->say = function (string $text, array $item) {
         FakeAIProvider::respond(aiEnvelope($item));

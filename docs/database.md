@@ -30,10 +30,7 @@ erDiagram
     whatsapp_messages ||--o{ ledger_transactions : "source"
     ai_requests ||--o{ ledger_transactions : "interpreted by"
 
-    ledger_accounts ||--o| credit_cards : "is"
-    credit_cards ||--o{ credit_card_statements : has
     ledger_accounts ||--o| loans : "is"
-    loans ||--o{ loan_installments : schedule
     counterparties ||--o{ debt_records : "owes/owed"
     debt_records ||--o{ debt_settlements : "settled by"
     ledger_transactions ||--o{ debt_settlements : "via"
@@ -89,14 +86,10 @@ erDiagram
     }
 ```
 
-## 2. ER diagram: planning, conversation, ops, SaaS
+## 2. ER diagram: planning, conversation, AI
 
 ```mermaid
 erDiagram
-    users ||--o{ conversations : has
-    conversations ||--o| conversation_states : "pending state"
-    conversations ||--o{ whatsapp_messages : contains
-    whatsapp_messages ||--o| media_assets : "has media"
     webhook_events ||--o| whatsapp_messages : produces
     users ||--o{ ai_requests : triggers
     prompt_templates ||--o{ ai_requests : "versioned by"
@@ -105,22 +98,13 @@ erDiagram
     users ||--o{ recurring_rules : has
     recurring_rules ||--o{ recurring_occurrences : generates
     recurring_occurrences }o--o| ledger_transactions : "paid by"
-    recurring_rules ||--o| subscriptions : "schedule of"
     recurring_rules ||--o| loans : "schedule of"
 
     users ||--o{ budgets : sets
     users ||--o{ goals : sets
     goals }o--o| ledger_accounts : "fund account"
     users ||--o{ user_aliases : "vocabulary"
-    users ||--o{ notifications : receives
-    users ||--o{ reconciliations : runs
-    users ||--o{ import_batches : uploads
-    import_batches ||--o{ import_rows : contains
 
-    plans ||--o{ billing_subscriptions : "subscribed to"
-    users ||--o{ billing_subscriptions : pays
-    users ||--o{ usage_quotas : "metered by"
-    admins ||--o{ audit_logs : acts
     users ||--o{ audit_logs : "subject"
 ```
 
@@ -138,9 +122,6 @@ meaningful ones; `created_at/updated_at` implied.
 **user_settings**: `user_id PK/FK`, `default_account_id`, `notification_prefs jsonb`
 (per type on/off), `confirm_threshold_minor`, `duplicate_window_seconds`,
 `pin_hash` (nullable), `feature_overrides jsonb`.
-
-**consents**: `user_id`, `purpose` (`data_processing|ai|media|notifications`),
-`version`, `granted_at`, `revoked_at`, `evidence_wa_message_id`.
 
 ### 3.2 Ledger (see `ledger.md`)
 **ledger_accounts**: columns in ER above; `UK(user_id, kind, name)` for non-counterparty
@@ -169,22 +150,16 @@ are copied lazily or read from a system scope.
 **merchants**: `id`, `user_id` (copied per user), `name`, `default_category_id`.
 **counterparties**: `id`, `user_id`, `name`, `phone_enc` (nullable), `status`.
 
-### 3.3 Debts, cards, loans
+### 3.3 Debts and loans
 **debt_records**: `id`, `user_id`, `counterparty_id`, `direction`
 (`receivable|payable`), `opened_transaction_id`, `original_minor`, `due_on`,
 `status` (`open|partial|settled|written_off`). Remaining = `original − Σ settlements`.
 **debt_settlements**: `debt_record_id`, `transaction_id`, `amount_minor`.
-**credit_cards**: `account_id PK/FK`, `issuer`, `nickname`, `last4 CHAR(4)`,
-`credit_limit_minor`, `statement_day`, `due_day`, `grace_days`. *No PAN, no CVV, ever.*
-**credit_card_statements**: `card_id`, `period_start`, `period_end`, `statement_date`,
-`due_date`, `total_due_minor`, `min_due_minor`, `paid_minor`, `status`.
 **loans**: `account_id PK/FK`, `name`, `principal_minor`, `annual_rate_bps`,
 `tenure_months`, `emi_minor`, `start_date`, `end_date`, `due_day`,
 `payment_account_id`, `recurring_rule_id`, `status`.
-**loan_installments**: `loan_id`, `seq`, `due_on`, `emi_minor`, `principal_minor`,
-`interest_minor`, `status` (`expected|due|paid|skipped`), `transaction_id`.
 
-### 3.4 Recurring, subscriptions, budgets, goals
+### 3.4 Recurring, budgets, goals
 **recurring_rules**: `user_id`, `kind`
 (`subscription|emi|salary|rent|insurance|sip|bill|other`), `event_type`, `template jsonb`
 (amount, accounts, category, merchant), `freq` (`daily|weekly|monthly|yearly`),
@@ -193,8 +168,6 @@ are copied lazily or read from a system scope.
 **recurring_occurrences**: `rule_id`, `due_on`, `status`
 (`expected|due|paid|skipped|cancelled`), `transaction_id`, `reminded_at`;
 `UK(rule_id, due_on)`.
-**subscriptions**: `user_id`, `name`, `merchant_id`, `recurring_rule_id`, `amount_minor`,
-`billing_frequency`, `next_billing_on`, `payment_account_id`, `category_id`, `status`.
 **budgets**: `user_id`, `scope` (`overall|category|account|goal`), `category_id`,
 `account_id`, `goal_id`, `amount_minor`, `period` (`monthly`), `alert_thresholds`
 (`{80,90,100}`), `last_alert_level_by_period`.
@@ -209,21 +182,9 @@ Progress = fund account balance; required monthly saving computed.
 **whatsapp_messages** (implemented; no `conversation_id` yet; the 24h window uses `users.last_inbound_at`).
 Body and payload are columns `text` / `payload` with Laravel `encrypted` casts; `dedupe_key UK` makes outbound
 replies retry-safe; `in_reply_to`; `peer_bidx` (blind index of the other party's number, never the number);
-`meta_timestamp`. Originally specified as: `id`, `user_id` (nullable until resolved), `conversation_id`,
-`wa_message_id UK`, `direction`, `message_type`
-(`text|audio|image|interactive|document|button|system|template`), `text_enc`,
-`payload_enc jsonb`, `status`
-(`received|queued|processing|processed|processing_failed|sent|delivered|read|failed`),
-`pricing_category`, `billable`, `cost_minor`, `cost_currency`, `error`, `received_at`,
-`processed_at`, `sent_at`. Index `(user_id, received_at DESC)`.
-**conversations**: `user_id`, `window_expires_at`, `last_message_at`.
-**conversation_states**: `conversation_id PK`, `pending_intent`, `pending_payload jsonb`,
+`meta_timestamp`. **conversation_states**: `conversation_id PK`, `pending_intent`, `pending_payload jsonb`,
 `awaiting` (`field|confirmation|choice`), `expires_at` (TTL, default 10 min),
 `context_refs jsonb` (last transaction id, last counterparty).
-**media_assets**: `message_id`, `kind`, `mime`, `size`, `sha256`, `storage_key`,
-`expires_at`, `deleted_at`.
-**notifications**: `user_id`, `type`, `payload`, `scheduled_for`, `template_name`,
-`channel_mode` (`free_form|template`), `status`, `whatsapp_message_id`, `dedupe_key UK`.
 
 ### 3.6 AI
 **prompt_templates**: `name`, `version`, `provider`, `model`, `body`, `schema_version`,
@@ -237,50 +198,18 @@ replies retry-safe; `in_reply_to`; `peer_bidx` (blind index of the other party's
 `(request_type, created_at)`.
 **ai_model_prices**: `provider`, `model`, `input_per_mtok`, `output_per_mtok`,
 `cache_read_per_mtok`, `cache_write_per_mtok`, `currency`, `effective_from`.
-**ai_usage_daily** (rollup): `day`, `user_id`, `model`, `request_type`, counts, tokens,
-cost.
-**ai_eval_runs**: `prompt_template_id`, `model`, `dataset_version`, `accuracy`,
-`false_txn_rate`, `missing_field_rate`, `p50/p95_latency`, `cost`, `details jsonb`.
 
-### 3.7 Cost, SaaS, admin, compliance
-**whatsapp_pricing_rates**: `market`, `category`, `rate_minor`, `currency`,
-`effective_from`. **infra_cost_entries**: `period`, `label`, `amount_minor`, `currency`.
-**cost_daily_rollups**: `day`, `user_id`, `ai_cost`, `whatsapp_cost`, `msg_count`,
-`txn_count`.
-**plans**: `code`, `name`, `price_minor`, `currency`, `interval`, `limits jsonb`,
-`features jsonb`. **billing_subscriptions**: `user_id`, `plan_id`, `status`,
-`provider`, `provider_ref`, `current_period_start/end`.
-**usage_quotas**: `user_id`, `metric`, `period_start`, `used`, `limit`.
-**admins**: `email UK`, `password`, `mfa_secret_enc`, `last_login_at` (+ roles/permissions).
+### 3.7 Audit
 **audit_logs**: `id bigint`, `actor_type` (`user|admin|system`), `actor_id`, `user_id`,
 `action`, `subject_type`, `subject_id`, `before jsonb`, `after jsonb`, `reason`,
 `correlation_id`, `ip`; append-only; `idx(user_id, created_at)`.
-**exchange_rates**: `base`, `quote`, `rate numeric(20,10)`, `as_of`, `source`.
-**reconciliations**: `account_id`, `stated_minor`, `expected_minor`, `diff_minor`,
-`adjustment_transaction_id`, `status`.
-**import_batches / import_rows**: statement import pipeline (Phase 8).
-**data_export_requests**: `user_id`, `kind`, `status`, `storage_key`, `expires_at`.
-**product_events**: `user_id`, `name`, `props` (non-sensitive), `created_at`.
 
-## 4. Why these tables and not the full §40 list
-
-| Spec table | Disposition |
-|---|---|
-| `account_types` | enum in code |
-| `subcategories` | `categories.parent_id` |
-| `transactions` + `transaction_entries` | `ledger_transactions` + `ledger_entries` |
-| `debts`, `receivables` | counterparty ledger accounts + `debt_records` |
-| `budget_categories` | `budgets` with nullable `category_id` |
-| `messages` | `whatsapp_messages` |
-| `ai_usage` | `ai_usage_daily` rollup from `ai_requests` |
-| `recurring_transactions` | `recurring_rules` (naming) |
-
-## 5. Retention hooks
+## 4. Retention hooks
 `webhook_events.payload`, `whatsapp_messages.*_enc`, `ai_requests.input_enc/output_enc`
 and `media_assets` carry expiry/purge timestamps and are cleaned by scheduled jobs.
 Ledger, audit, and cost metadata are retained long-term (see `security.md`).
 
-## 6. Scale notes
+## 5. Scale notes
 Index keys on `utf8mb4` are limited (keep indexed VARCHARs ≤ 191 chars or use prefix/hash columns, e.g. `event_hash CHAR(64)`).
 Start unpartitioned. Revisit partitioning `ledger_entries`/`audit_logs`/`ai_requests`
 by month when a table exceeds hundreds of millions of rows or vacuum/index cost shows

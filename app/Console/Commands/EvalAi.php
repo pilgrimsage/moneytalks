@@ -38,6 +38,14 @@ class EvalAi extends Command
         }
 
         $live = (bool) $this->option('live');
+        if ($live) { // cases that script a bad model answer only make sense when replaying
+            $cases = array_values(array_filter($cases, fn ($c) => empty($c['replay_only'])));
+            if ($cases === []) {
+                $this->error('No live cases selected (the selection only has replay-only cases).');
+
+                return self::FAILURE;
+            }
+        }
         $model = $this->option('model') ?: null;
 
         if ($live) {

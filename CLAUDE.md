@@ -19,7 +19,7 @@ Cloud API). Target host is shared-hosting-like: no Redis, no daemons; database q
 - Console tooling lives in `app/Console/Commands` (`moneytalks:*`: `ledger:verify`, `health`, `simulate` WhatsApp, backup/restore, privacy export/erase); schedule is `routes/console.php`.
 - Test layout: `Unit` is pure PHP (no framework/DB); `Feature` uses `RefreshDatabase`; `Concurrency` uses `DatabaseTruncation` (real commits, spawned workers). Shared helpers (`ledgerUser`, `account`, `command`, `rupees`) are in `tests/Pest.php`.
 - Local setup: `cp .env.example .env && composer install && php artisan key:generate && php artisan migrate`. No Docker, no CI/CD: deployment is a manual pull on Hostinger (`docs/deployment.md`).
-- Local DB: MySQL/MariaDB `moneytalks` / `moneytalks_test`, user `moneytalks`, password `secret` (see `.env.example`).
+- Local DB: MySQL `moneytalks` / `moneytalks_test` as `root`/`root` (set in `.env` and `phpunit.xml`; change both if your MySQL differs).
 
 ## Architecture in one picture
 ```

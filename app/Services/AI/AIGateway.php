@@ -64,7 +64,7 @@ class AIGateway
                 continue;
             } catch (AIPermanentException $e) {
                 $this->record($user, $whatsappMessageId, $prompt, $model, $attempt, null, 'failed', $e->errorCode, $userContent, $promptName);
-                throw new AIUnavailableException('AI request rejected: '.($e->errorCode ?? 'permanent'), $e->errorCode);
+                throw new AIUnavailableException('AI request rejected: '.($e->errorCode ?? 'permanent'), $e->errorCode, $e->detail);
             }
 
             $id = $this->record($user, $whatsappMessageId, $prompt, $model, $attempt, $response, $response->status, null, $userContent, $promptName);
@@ -73,7 +73,7 @@ class AIGateway
         }
 
         Log::warning('ai.unavailable', ['model' => $model, 'error' => $lastError?->errorCode]);
-        throw new AIUnavailableException('AI provider unavailable after '.self::MAX_ATTEMPTS.' attempts', $lastError?->errorCode);
+        throw new AIUnavailableException('AI provider unavailable after '.self::MAX_ATTEMPTS.' attempts', $lastError?->errorCode, $lastError?->detail);
     }
 
     public function setOutcome(int $requestId, string $outcome): void

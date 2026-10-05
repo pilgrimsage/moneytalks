@@ -104,6 +104,16 @@ class AnthropicProvider implements AIProvider
         ];
     }
 
+    /** The API's own error type and message (e.g. "credit balance is too low"); it does not echo the request. */
+    private function detail(APIStatusException $e, int $status): string
+    {
+        $body = is_array($e->body ?? null) ? $e->body : [];
+        $type = data_get($body, 'error.type');
+        $text = data_get($body, 'error.message');
+
+        return mb_substr("HTTP {$status}".($type ? " {$type}" : '').($text ? ": {$text}" : ''), 0, 300);
+    }
+
     private function classify(Throwable $e): Throwable
     {
         if ($e instanceof APIConnectionException) { // includes timeouts
@@ -111,21 +121,22 @@ class AnthropicProvider implements AIProvider
         }
         if ($e instanceof APIStatusException) {
             $status = (int) $e->status;
+            $detail = $this->detail($e, $status);
             // 408/409/429 and every 5xx (incl. Anthropic's 529 overloaded) are worth retrying.
             if (in_array($status, [408, 409, 429], true) || $status >= 500) {
-                return new AITransientException("Anthropic HTTP {$status}", 'http_'.$status);
+                return new AITransientException("Anthropic HTTP {$status}", 'http_'.$status, $detail);
             }
             if ($e instanceof AuthenticationException || $e instanceof PermissionDeniedException) {
-                return new AIPermanentException('Anthropic credentials rejected', 'auth');
+                return new AIPermanentException('Anthropic credentials rejected', 'auth', $detail);
             }
             if ($e instanceof NotFoundException) {
-                return new AIPermanentException('Model not found', 'model_not_found');
+                return new AIPermanentException('Model not found', 'model_not_found', $detail);
             }
             if ($e instanceof BadRequestException) {
-                return new AIPermanentException('Anthropic rejected the request', 'bad_request');
+                return new AIPermanentException('Anthropic rejected the request', 'bad_request', $detail);
             }
 
-            return new AIPermanentException("Anthropic HTTP {$status}", 'http_'.$status);
+            return new AIPermanentException("Anthropic HTTP {$status}", 'http_'.$status, $detail);
         }
 
         return new AIPermanentException(get_class($e), 'unexpected'); // never include request data here

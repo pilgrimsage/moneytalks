@@ -14,6 +14,7 @@ use App\Models\UserAlias;
 use App\Services\AI\AIProvider;
 use App\Services\AI\CostCalculator;
 use App\Services\AI\DTO\StructuredRequest;
+use App\Services\AI\Exceptions\AIException;
 use App\Services\AI\PromptRegistry;
 use App\Services\AI\Prompts\TransactionParser;
 use App\Services\AI\ResponseNormalizer;
@@ -76,7 +77,7 @@ class EvalRunner
                     }
                 } catch (Throwable $e) {
                     $report->errors++;
-                    $problems[] = 'error: '.get_class($e);
+                    $problems[] = 'error: '.get_class($e).($e instanceof AIException && $e->detail !== null ? ' ('.$e->detail.')' : '');
                 }
 
                 $problems = array_merge($problems, $this->compare($case['expect'], $decisions, $report));
@@ -161,12 +162,18 @@ class EvalRunner
         return $problems;
     }
 
+    /** Names compare case-insensitively ("HDFC Credit Card" is "HDFC credit card"); everything else exactly. */
+    private function sameValue(mixed $got, mixed $want): bool
+    {
+        return is_string($got) && is_string($want) ? mb_strtolower($got) === mb_strtolower($want) : $got === $want;
+    }
+
     /** @return list<string> which transaction the user pointed at, and (for corrections) the new values */
     private function intentFields(array $want, Decision $got, int $i): array
     {
         $problems = [];
         foreach (['target_kind', 'target_amount', 'target_text', 'amount', 'category', 'account', 'merchant', 'query_metric', 'group_by', 'limit', 'search_text', 'export_format'] as $field) {
-            if (array_key_exists($field, $want) && ($got->item[$field] ?? null) !== $want[$field]) {
+            if (array_key_exists($field, $want) && ! $this->sameValue($got->item[$field] ?? null, $want[$field])) {
                 $problems[] = "item {$i}: {$field} expected ".json_encode($want[$field]).', got '.json_encode($got->item[$field] ?? null);
             }
         }

@@ -43,14 +43,7 @@ media, and the **LLM's output**. Only the validated domain command crosses into 
 - **Authorization:** every query/command is scoped by `user_id` from the resolved
   session, never from AI output. Eloquent global scope + policies; cross-user entity
   references are impossible because the resolver only searches the caller's records.
-- **Admins:** separate `admins` table/guard, Filament, **mandatory MFA**, role-based
-  access (spatie/laravel-permission: `support`, `finance`, `ops`, `superadmin`), session
-  hardening (secure/HttpOnly/SameSite cookies, short idle timeout), optional IP
-  allow-list, audit log of every view of user data. Support staff see masked financial
-  values by default; "reveal" is a logged action with a reason.
-- Admin never sees secrets (tokens/keys are not stored in DB-visible form or shown).
-- API (`/api/v1`): token auth (Sanctum) for admin/future first-party clients; strict
-  per-route abilities.
+- **Operator:** there is no admin UI or API. Management is by console commands on the server (SSH), so server access is the admin boundary.
 
 ## 4. Secrets
 - Environment variables / secret manager only; never in git. `.env.example` has names only.
@@ -96,12 +89,8 @@ confirmation for high-risk/bulk/destructive intents · amount caps and write cap
 suspicious-content flag (`unknown/injection_suspected`) logged for review. Image/OCR text
 is treated exactly like user text.
 
-## 8. Web/API hardening (admin + API)
-CSRF on web routes; output encoding (Blade/Filament escaping, no raw HTML from user
-data); parameterised queries only (Eloquent/query builder; **no AI-generated SQL**);
-security headers (CSP, X-Content-Type-Options, frame-ancestors, Referrer-Policy);
-request validation classes; rate limiting per route (`throttle`) and login lockout;
-dependency audit (`composer audit`) and Dependabot in CI; secrets scanning in CI.
+## 8. Web hardening
+Parameterised queries only (Eloquent/query builder; **no AI-generated SQL**); request validation; per-route `throttle`; `composer audit` before deploying; `.env`, `storage/` and `vendor/` must not be web-reachable.
 
 ## 9. Retention (proposed defaults; **needs legal review**)
 
@@ -114,7 +103,6 @@ dependency audit (`composer audit`) and Dependabot in CI; secrets scanning in CI
 | Media / receipts | deleted after extraction, max 7 days if user keeps pending | opt-in keep |
 | Exports | 24 h signed link, then deleted | |
 | Ledger + audit logs | life of account | after deletion: only what law requires, anonymised otherwise |
-| Admin access logs | 1 year+ | |
 
 ## 10. User privacy rights (WhatsApp flows)
 `show my data`, `export my data` (machine-readable bundle), `stop notifications`
@@ -140,12 +128,11 @@ Automated encrypted DB backups (host backups **plus** our own scheduled `mysqldu
 | Hallucinated amount/category | amount cross-check, entity resolver, risk score |
 | Account takeover via SIM swap | optional PIN, high-risk step-up, notifications on sensitive actions |
 | Data leak via logs | redaction, no bodies at info level |
-| Cost-abuse (spam, AI loops) | rate limits, quotas, kill switch, invite gating |
+| Cost-abuse (spam, AI loops) | rate limits, daily AI budget, kill switch, allow-list |
 | Malicious media | size/type limits, scan, isolation, expiry |
-| Insider/admin misuse | RBAC, MFA, masked values, audit logging |
 | Double-spend of a webhook | idempotency + DB uniqueness |
 
-## 12. What is implemented (M12, personal mode)
+## 13. What is implemented (M12, personal mode)
 
 Read this before the proposals above: it is what the code does today.
 
