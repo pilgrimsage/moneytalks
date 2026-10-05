@@ -1,6 +1,6 @@
 # Chat channels: Telegram and WhatsApp
 
-`WHATSAPP_PROVIDER` picks the channel (the name is historical): `telegram` (recommended), `meta` (WhatsApp Cloud API) or `fake` (local/tests). Everything below the provider
+`WHATSAPP_PROVIDER` picks the channel (the name is historical): `telegram` (recommended), `meta` (WhatsApp Cloud API) or `fake` (local/tests). Both channels' settings can stay in `.env` together; switching is that one line plus the matching allow-list (`ALLOWED_TELEGRAM_IDS` or `ALLOWED_WA_IDS`). A Telegram id and a WhatsApp number are different users with separate books. Everything below the provider
 interface (users, allow-list, processing, replies, media rules) is identical for both.
 
 ## Telegram
@@ -11,7 +11,7 @@ interface (users, allow-list, processing, replies, media rules) is identical for
 - **Formatting:** replies use `*bold*` and `_italic_`; they are converted to Telegram HTML with everything else escaped.
 - **Media:** `getFile`, then a download from `api_base` only (the token is in the URL, so it never goes elsewhere); the type comes from the file extension and `MediaGuard` still checks the bytes.
 - **Secrets:** the bot token is part of every API URL. Errors and logs carry Telegram's description and code only, never a URL or the HTTP client's message.
-- Setup steps are in the root `README.md`. Env: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `ALLOWED_WA_IDS`.
+- Setup steps are in the root `README.md`. Env: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `ALLOWED_TELEGRAM_IDS` (falls back to `ALLOWED_WA_IDS` when empty).
 
 # WhatsApp (Meta Cloud API, direct)
 

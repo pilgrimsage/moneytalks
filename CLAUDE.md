@@ -48,7 +48,7 @@ Design docs per area are in `docs/` (`ledger.md`, `whatsapp.md`, `ai.md`, `testi
 - Inbound handling must be safe to run twice for one message: use ledger idempotency keys and `reply:{wa_message_id}:{n}` reply keys.
 - Never store content of messages from senders that are not allowed; never log message bodies or tokens.
 - New vendor = new `WhatsAppProvider` implementation; nothing else may know Meta's or Telegram's wire format. `WHATSAPP_PROVIDER` selects `telegram` (recommended), `meta` or `fake`; the name is historical.
-- Telegram: the bot token is in every API URL, so never log a URL, request or HTTP-client exception message from `TelegramProvider`. Its ids are plain numbers and live in the same `wa_id` slot / `ALLOWED_WA_IDS`.
+- Telegram: the bot token is in every API URL, so never log a URL, request or HTTP-client exception message from `TelegramProvider`. Its ids are plain numbers and live in the same `wa_id` slot; the allow-list is per channel (`App\Support\AllowList`: `ALLOWED_TELEGRAM_IDS`, else `ALLOWED_WA_IDS`).
 
 ## AI rules of thumb (M5)
 - All model calls go through `AIGateway` (routing, retry, `ai_requests` row, cost). Never call a provider directly from domain code.

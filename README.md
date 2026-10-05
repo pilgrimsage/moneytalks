@@ -57,7 +57,7 @@ cd ~/domains/<yourdomain>/ && git clone <your repo> money && cd money     # or u
 composer install --no-dev --optimize-autoloader
 cp .env.example .env && php artisan key:generate && nano .env
 ```
-In `.env` set: `APP_URL`, `DB_*`, `ANTHROPIC_API_KEY`, and the Telegram values from step 5 (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `ALLOWED_WA_IDS` = your Telegram user id).
+In `.env` set: `APP_URL`, `DB_*`, `ANTHROPIC_API_KEY`, and the Telegram values from step 5 (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `ALLOWED_TELEGRAM_IDS` = your Telegram user id).
 Generate each secret with `php -r "echo bin2hex(random_bytes(32));"`: `PII_BLIND_INDEX_KEY`, `HEALTH_TOKEN`, `TELEGRAM_WEBHOOK_SECRET` and
 `BACKUP_ENCRYPTION_KEY` (keep a copy off the server). Keep `APP_ENV=production`, `WHATSAPP_PROVIDER=telegram`.
 ```bash
@@ -76,7 +76,7 @@ hPanel -> Advanced -> Cron Jobs, two jobs, **every minute**:
 
 ## 5. Connect Telegram (free, about 5 minutes, no business account)
 1. In Telegram, open **@BotFather** -> `/newbot` -> pick a name and a username ending in `bot`. Copy the **token** -> `TELEGRAM_BOT_TOKEN`.
-2. Find your own numeric id: message **@userinfobot** and copy the number it shows -> `ALLOWED_WA_IDS` (only this id can use the bot).
+2. Find your own numeric id: message **@userinfobot** and copy the number it shows -> `ALLOWED_TELEGRAM_IDS` (only this id can use the bot).
 3. Make a random secret: `php -r "echo bin2hex(random_bytes(32));"` -> `TELEGRAM_WEBHOOK_SECRET`. Set `WHATSAPP_PROVIDER=telegram` in `.env`.
 4. On the server: `php artisan config:cache`, then create yourself with `php artisan moneytalks:user:create <your telegram id> --name="<you>"`.
 5. Register the webhook: `php artisan moneytalks:telegram:webhook set` (uses `APP_URL/webhooks/telegram`; `info` shows its status, `delete` removes it).
@@ -84,7 +84,7 @@ hPanel -> Advanced -> Cron Jobs, two jobs, **every minute**:
 
 <details><summary>Optional: WhatsApp instead (Meta Cloud API; needs a Meta business portfolio)</summary>
 
-Set `WHATSAPP_PROVIDER=meta`, then:
+Both channels live side by side in `.env` (see `.env.example`); `WHATSAPP_PROVIDER` picks the active one. To switch, set `WHATSAPP_PROVIDER=meta`, put your WhatsApp number (digits, country code, no `+`) in `ALLOWED_WA_IDS`, fill the `META_*` values, `php artisan config:cache`, and create that user with `moneytalks:user:create <number>`. A WhatsApp number and a Telegram id are different users with separate books, so the new channel starts empty. Then:
 1. developers.facebook.com -> **Create App** (Business) -> add **WhatsApp**. In **API Setup** copy the **Phone number ID** (`META_PHONE_NUMBER_ID`) and
    **WhatsApp Business Account ID** (`META_WABA_ID`), and add + verify your own phone as a recipient.
 2. App Settings -> Basic: **App ID** (`META_APP_ID`) and **App secret** (`META_APP_SECRET`).

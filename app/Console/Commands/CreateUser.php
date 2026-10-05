@@ -22,7 +22,7 @@ class CreateUser extends Command
 
         $allowed = config('moneytalks.allowed_wa_ids');
         if ($allowed !== [] && ! in_array($waId, $allowed, true)) {
-            $this->error('That number is not in ALLOWED_WA_IDS (personal mode).');
+            $this->error('That id is not in the allow-list for the active channel (ALLOWED_TELEGRAM_IDS for Telegram, ALLOWED_WA_IDS for WhatsApp).');
 
             return self::FAILURE;
         }

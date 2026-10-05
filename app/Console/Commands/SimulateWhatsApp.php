@@ -40,7 +40,7 @@ class SimulateWhatsApp extends Command
 
         $from = preg_replace('/\D+/', '', (string) ($this->option('from') ?: (config('moneytalks.allowed_wa_ids')[0] ?? '')));
         if ($from === '') {
-            $this->error('No sender: pass --from or set ALLOWED_WA_IDS.');
+            $this->error('No sender: pass --from or set the allow-list (ALLOWED_TELEGRAM_IDS / ALLOWED_WA_IDS).');
 
             return self::FAILURE;
         }
